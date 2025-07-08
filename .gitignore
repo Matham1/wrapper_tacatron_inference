@@ -1,0 +1,10 @@
+venv/
+*__pycache__
+# Python bytecode
+__pycache__/
+*/__pycache__/
+**/__pycache__/
+*.so
+*.py[cod]
+tts_audios/
+*.onnx
