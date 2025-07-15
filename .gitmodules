@@ -1,3 +1,3 @@
-[submodule "tacatron_inference"]
-	path = tacatron_inference
-	url = https://github.com/Matham1/tacatron_inference
+[submodule "tacotron_inference"]
+	path = tacotron_inference
+	url = https://github.com/Matham1/tacotron_inference.git

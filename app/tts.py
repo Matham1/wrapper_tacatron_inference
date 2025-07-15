@@ -1,42 +1,62 @@
-from dotenv import load_dotenv
-load_dotenv()
+import sys
+import os
 
-import onnxruntime
-import utils
-# We assume this function can be modified or we get the audio data from it
-from infer_onnx import synthesize_speech_to_memory 
-import io
+# Add tacotron paths
+sys.path.append('./tacotron_inference/hifigan')
+sys.path.append('./tacotron_inference/tacotron2')
+
+from tacotron_inference.inference import TextToSpeech
 
 class TTSService:
-    def __init__(self, model_path: str, config_path: str, lang: str = "en", sid: int = None, use_accent: bool = True):
-        self.model_path = model_path
-        self.config_path = config_path
-        self.lang = lang
-        self.sid = sid
-        self.use_accent = use_accent
-
-        sess_options = onnxruntime.SessionOptions()
-        self.model = onnxruntime.InferenceSession(
-            self.model_path,
-            sess_options=sess_options,
-            providers=["CPUExecutionProvider"]
-        )
-        self.hps = utils.get_hparams_from_file(self.config_path)
-
-    def synthesize(self, text: str) -> bytes:
-        """
-        Synthesizes speech and returns the audio data as bytes from an in-memory buffer.
-        """
-        # This new function returns raw audio data and sampling rate
-        audio, sampling_rate = synthesize_speech_to_memory(
-            text, self.model, self.hps, self.lang, self.sid, self.use_accent
-        )
-
-        # Use soundfile to write the raw audio to an in-memory buffer
-        buffer = io.BytesIO()
-        import soundfile as sf
-        sf.write(buffer, audio, sampling_rate, format='WAV')
+    def __init__(self):
+        """Initialize the TTS service with Tacotron2 + HiFi-GAN"""
+        print("Initializing Tacotron2 TTS Service...")
+        self.tts = TextToSpeech()
+        self._current_speaker = None
         
-        # Go to the beginning of the buffer to read its contents
-        buffer.seek(0)
-        return buffer.read()
+        # Map language codes to default speakers
+        self.language_speakers = {
+            "en": "eng_wmn",
+            "kz": "kaz_wmn", 
+            "ru": "rus_wmn"
+        }
+
+    def _ensure_speaker_loaded(self, lang: str):
+        """Ensure the correct speaker model is loaded for the language"""
+        speaker = self.language_speakers.get(lang)
+        if not speaker:
+            raise ValueError(f"Unsupported language: {lang}")
+        
+        if self._current_speaker != speaker:
+            self.tts.load_speaker(speaker)
+            self._current_speaker = speaker
+
+    def synthesize(self, text: str, lang: str = "en") -> bytes:
+        """
+        Synthesize speech from text using the appropriate language model.
+        Returns WAV file bytes.
+        """
+        # Ensure output directory exists
+        os.makedirs('outputs', exist_ok=True)
+        
+        # Generate unique output filename
+        output_file = f"outputs/temp_{hash(text + lang)}.wav"
+        
+        try:
+            # Load correct speaker for language
+            self._ensure_speaker_loaded(lang)
+            
+            # Synthesize audio
+            self.tts.synthesize(text, output_file)
+            
+            # Read the generated file
+            with open(output_file, 'rb') as f:
+                audio_bytes = f.read()
+            
+            # Cleanup
+            os.remove(output_file)
+            
+            return audio_bytes
+            
+        except Exception as e:
+            raise RuntimeError(f"Speech synthesis failed: {str(e)}")
