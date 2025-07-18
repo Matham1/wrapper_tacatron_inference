@@ -18,41 +18,46 @@ class TTSService:
         logger.info("Initializing Tacotron2 TTS Service...")
         self.tts = TextToSpeech()
         self._current_speaker = None
-        
-        # Map language codes to default speakers
-        self.language_speakers = {
-            "en": "eng_chd",
-            "kz": "kaz_chd", 
-            "ru": "rus_chd"
+
+        # Map (lang, voice_model) to speaker names
+        self.speaker_map = {
+            ("en", "pecs_child"): "eng_chd",
+            ("en", "pecs_man"): "eng_man",
+            ("en", "pecs_woman"): "eng_woman",
+            ("kz", "pecs_child"): "kaz_chd",
+            ("kz", "pecs_man"): "kaz_man",
+            ("kz", "pecs_woman"): "kaz_woman",
+            ("ru", "pecs_child"): "rus_chd",
+            ("ru", "pecs_man"): "rus_man",
+            ("ru", "pecs_woman"): "rus_woman",
         }
 
-    def _ensure_speaker_loaded(self, lang: str):
-        """Ensure the correct speaker model is loaded for the language"""
-        speaker = self.language_speakers.get(lang)
+    def _ensure_speaker_loaded(self, lang: str, voice_model: str):
+        """Ensure the correct speaker model is loaded for the language and voice_model"""
+        speaker = self.speaker_map.get((lang, voice_model))
         if not speaker:
-            logger.error(f"Unsupported language: {lang}")
-            raise ValueError(f"Unsupported language: {lang}")
-        
+            logger.error(f"Unsupported language/model combination: {lang}/{voice_model}")
+            raise ValueError(f"Unsupported language/model combination: {lang}/{voice_model}")
         if self._current_speaker != speaker:
-            logger.info(f"Loading speaker for language '{lang}': {speaker}")
+            logger.info(f"Loading speaker for language '{lang}', model '{voice_model}': {speaker}")
             self.tts.load_speaker(speaker)
             self._current_speaker = speaker
 
-    def synthesize(self, text: str, lang: str = "en") -> bytes:
+    def synthesize(self, text: str, lang: str = "en", voice_model: str = "pecs_child") -> bytes:
         """
         Synthesize speech from text using the appropriate language model.
         Returns WAV file bytes.
         """
-        logger.info(f"Synthesizing text for lang='{lang}': {text[:60]}{'...' if len(text) > 60 else ''}")
+        logger.info(f"Synthesizing text for lang='{lang}', voice_model='{voice_model}': {text[:60]}{'...' if len(text) > 60 else ''}")
         # Ensure output directory exists
         os.makedirs('outputs', exist_ok=True)
         
         # Generate unique output filename
-        output_file = f"outputs/temp_{hash(text + lang)}.wav"
+        output_file = f"outputs/temp_{hash(text + lang + voice_model)}.wav"
         
         try:
-            # Load correct speaker for language
-            self._ensure_speaker_loaded(lang)
+            # Load correct speaker for language and voice model
+            self._ensure_speaker_loaded(lang, voice_model)
             
             # Synthesize audio
             logger.debug(f"Calling tts.synthesize with output_file={output_file}")
@@ -65,7 +70,7 @@ class TTSService:
             # Cleanup
             os.remove(output_file)
             
-            logger.info(f"Synthesis complete for lang='{lang}'. Output file removed after reading.")
+            logger.info(f"Synthesis complete for lang='{lang}', voice_model='{voice_model}'. Output file removed after reading.")
             return audio_bytes
             
         except Exception as e:

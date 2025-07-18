@@ -12,6 +12,7 @@ logger = logging.getLogger("FastAPI-TTS")
 class TTSRequest(BaseModel):
     text: str
     lang: str = "en"
+    voice_model: str = "pecs_child"
 
     @property
     def validated_lang(self) -> str:
@@ -19,6 +20,13 @@ class TTSRequest(BaseModel):
         if self.lang not in ["en", "kz", "ru"]:
             raise ValueError(f"Unsupported language: {self.lang}")
         return self.lang
+
+    @property
+    def validated_voice_model(self) -> str:
+        """Validate voice model"""
+        if self.voice_model not in ["pecs_child", "pecs_man", "pecs_woman"]:
+            raise ValueError(f"Unsupported voice_model: {self.voice_model}")
+        return self.voice_model
 
 app = FastAPI()
 
@@ -45,12 +53,13 @@ async def synthesize(req: TTSRequest):
         raise HTTPException(status_code=400, detail="Text must not be empty")
 
     try:
-        # Get validated language
+        # Get validated language and voice model
         lang = req.validated_lang
-        logger.info(f"Received synthesis request: lang={lang}, text='{req.text[:60]}{'...' if len(req.text) > 60 else ''}'")
+        voice_model = req.validated_voice_model
+        logger.info(f"Received synthesis request: lang={lang}, voice_model={voice_model}, text='{req.text[:60]}{'...' if len(req.text) > 60 else ''}'")
         
         # Synthesize audio
-        wav_bytes = tts_service.synthesize(req.text, lang)
+        wav_bytes = tts_service.synthesize(req.text, lang, voice_model)
 
         # Save a copy locally
         save_dir = "tts_audios"
