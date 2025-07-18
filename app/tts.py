@@ -23,13 +23,13 @@ class TTSService:
         self.speaker_map = {
             ("en", "pecs_child"): "eng_chd",
             ("en", "pecs_man"): "eng_man",
-            ("en", "pecs_woman"): "eng_woman",
+            ("en", "pecs_woman"): "eng_wmn",
             ("kz", "pecs_child"): "kaz_chd",
             ("kz", "pecs_man"): "kaz_man",
-            ("kz", "pecs_woman"): "kaz_woman",
+            ("kz", "pecs_woman"): "kaz_wmn",
             ("ru", "pecs_child"): "rus_chd",
             ("ru", "pecs_man"): "rus_man",
-            ("ru", "pecs_woman"): "rus_woman",
+            ("ru", "pecs_woman"): "rus_wmn",
         }
 
     def _ensure_speaker_loaded(self, lang: str, voice_model: str):
