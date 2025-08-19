@@ -12,3 +12,4 @@ soundfile
 fastapi
 uvicorn[standard]
 dotenv
+gunicorn
